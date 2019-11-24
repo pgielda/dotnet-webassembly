@@ -5,3 +5,5 @@ echo
 echo "Compiling."
 clang --target=wasm32 -nostdlib -Wl,--export-all -Wl,--allow-undefined -Wl,--no-entry -o test.wasm test.c
 
+
+# clang --target=wasm32 -nostdlib -Wl,--export-all -Wl,--allow-undefined -Wl,--no-entry -o test.wasm test.c wasm32-wasi/libc.a

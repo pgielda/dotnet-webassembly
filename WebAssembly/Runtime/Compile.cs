@@ -329,11 +329,12 @@ namespace WebAssembly.Runtime
 					    try {
                                                 typedDelegate = del.MakeGenericType(signature.ParameterTypes.Concat(signature.ReturnTypes).ToArray());
 					    } catch {
+					    	Console.WriteLine("We are changing1 {0}", fieldName);
 					        typedDelegate = typeof(Action);
 					    }
                                             var delField = $"➡ {moduleName}::{fieldName}";
                                             var delFieldBuilder = exportsBuilder.DefineField(delField, typedDelegate, privateReadonlyField);
-
+					    Console.WriteLine("Method {0}", delField);
                                             var invoker = exportsBuilder.DefineMethod(
                                                 $"Invoke {delField}",
                                                 internalFunctionAttributes,
@@ -408,6 +409,7 @@ namespace WebAssembly.Runtime
 
                                             var typedDelegate = typeof(Func<UnmanagedMemory>);
                                             var delField = $"➡ {moduleName}::{fieldName}";
+					    Console.WriteLine("Method {0}", delField);
                                             var delFieldBuilder = exportsBuilder.DefineField(delField, typedDelegate, privateReadonlyField);
 
                                             importedMemoryProvider = exportsBuilder.DefineMethod(
@@ -447,9 +449,16 @@ namespace WebAssembly.Runtime
                                         {
                                             var contentType = (WebAssemblyValueType)reader.ReadVarInt7();
                                             var mutable = reader.ReadVarUInt1() == 1;
+                                            Type typedDelegate;
+                                            try {
+                                                typedDelegate = typeof(Func<>).MakeGenericType(new[] { contentType.ToSystemType() });
 
-                                            var typedDelegate = typeof(Func<>).MakeGenericType(new[] { contentType.ToSystemType() });
+                                            } catch {
+					    	Console.WriteLine("We are changing2");
+                                                typedDelegate = typeof(Action);
+                                            }
                                             var delField = $"➡ Get {moduleName}::{fieldName}";
+					    Console.WriteLine("Method {0}", delField);
                                             var delFieldBuilder = exportsBuilder.DefineField(delField, typedDelegate, privateReadonlyField);
 
                                             var getterInvoker = exportsBuilder.DefineMethod(
@@ -491,10 +500,15 @@ namespace WebAssembly.Runtime
                                             }
                                             else
                                             {
-                                                typedDelegate = typeof(Action<>).MakeGenericType(new[] { contentType.ToSystemType() });
+                                                try {
+                                                    typedDelegate = typeof(Action<>).MakeGenericType(new[] { contentType.ToSystemType() });
+                                                } catch {
+						    Console.WriteLine("We are chaning3");
+                                                    typedDelegate = typeof(Action);
+                                                }
                                                 delField = $"➡ Set {moduleName}::{fieldName}";
                                                 delFieldBuilder = exportsBuilder.DefineField(delField, typedDelegate, privateReadonlyField);
-
+						Console.WriteLine("Method {0}", delField);
                                                 setterInvoker = exportsBuilder.DefineMethod(
                                                 $"Invoke {delField}",
                                                 internalFunctionAttributes,
@@ -576,8 +590,9 @@ namespace WebAssembly.Runtime
                             {
                                 var signature = functionSignatures[i] = signatures[reader.ReadVarUInt32()];
                                 var parms = signature.ParameterTypes.Concat(new[] { exports }).ToArray();
+				Console.WriteLine("Function {0} {1} {2}_internal", i, signature,i);
                                 internalFunctions[i] = exportsBuilder.DefineMethod(
-                                    $"👻 {i}",
+                                    $"👻 {i}_internal",
                                     internalFunctionAttributes,
                                     CallingConventions.Standard,
                                     signature.ReturnTypes.FirstOrDefault(),
@@ -1001,21 +1016,28 @@ namespace WebAssembly.Runtime
                                 for (var j = 0u; j < elements; j++)
                                 {
                                     var functionIndex = reader.ReadVarUInt32();
+				    Console.WriteLine("index={0}", functionIndex);
                                     var signature = functionSignatures[functionIndex];
                                     var parms = signature.ParameterTypes;
                                     var returns = signature.ReturnTypes;
 
                                     if (!delegateInvokersByTypeIndex.TryGetValue(signature.TypeIndex, out var invoker))
                                     {
-                                        var del = configuration
+                                            Type typedDelegate;
+                                            try {
+                                                typedDelegate = configuration
                                             .GetDelegateForType(parms.Length, returns.Length)
                                             .MakeGenericType(parms.Concat(returns).ToArray());
-                                        delegateInvokersByTypeIndex.Add(signature.TypeIndex, invoker = del.GetTypeInfo().GetDeclaredMethod(nameof(Action.Invoke)));
+                                            } catch {
+					        Console.WriteLine("We are changing4 index={0}", functionIndex);
+                                                typedDelegate = typeof(Action);
+                                            }
+                                        delegateInvokersByTypeIndex.Add(signature.TypeIndex, invoker = typedDelegate.GetTypeInfo().GetDeclaredMethod(nameof(Action.Invoke)));
                                     }
 
                                     instanceConstructorIL.Emit(OpCodes.Ldloc, localFunctionTable);
                                     instanceConstructorIL.EmitLoadConstant(offset + j);
-
+				Console.WriteLine("we are emitting function = {0}", functionIndex);
                                     if (existingDelegates.TryGetValue(functionIndex, out var existing))
                                     {
                                         instanceConstructorIL.Emit(OpCodes.Ldloc, localFunctionTable);
@@ -1025,9 +1047,8 @@ namespace WebAssembly.Runtime
                                     else
                                     {
                                         existingDelegates.Add(functionIndex, offset + j);
-
                                         var wrapper = exportsBuilder.DefineMethod(
-                                            $"📦 {functionIndex}",
+                                            $"📦 {functionIndex}-wrapper",
                                             MethodAttributes.Private | MethodAttributes.HideBySig,
                                             returns.Length == 0 ? typeof(void) : returns[0],
                                             parms
@@ -1182,6 +1203,7 @@ namespace WebAssembly.Runtime
                 {
                     var exported = exportedFunctions[i];
                     var signature = functionSignatures[exported.Value];
+		    Console.WriteLine("Exported function '{0}' key={1} value={2} f={3}", exported, exported.Key, exported.Value, internalFunctions[exported.Value]);
 
                     var method = exportsBuilder.DefineMethod(
                         exported.Key,
@@ -1203,6 +1225,7 @@ namespace WebAssembly.Runtime
 
             if (startFunction != null)
             {
+	        Console.WriteLine("startFunction = {0}", startFunction);
                 instanceConstructorIL.Emit(OpCodes.Ldarg_0);
                 instanceConstructorIL.Emit(OpCodes.Call, startFunction);
             }

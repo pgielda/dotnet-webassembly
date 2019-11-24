@@ -1,4 +1,5 @@
-void sayc(int s);
+extern void sayc(int s);
+extern void greet();
 
 void putss(char *s) {
 	int i = 0;
@@ -8,10 +9,7 @@ void putss(char *s) {
 	}
 }
 
-int main() {
+void main() {
 	putss("hello!\n");
-}
-
-int  test() {
-	putss(__func__);
+	greet();
 }

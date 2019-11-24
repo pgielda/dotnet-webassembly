@@ -325,8 +325,12 @@ namespace WebAssembly.Runtime
                                                 missingDelegates.Add(new MissingDelegateType(moduleName, fieldName, signature));
                                                 continue;
                                             }
-
-                                            var typedDelegate = del.MakeGenericType(signature.ParameterTypes.Concat(signature.ReturnTypes).ToArray());
+                                            Type typedDelegate;
+					    try {
+                                                typedDelegate = del.MakeGenericType(signature.ParameterTypes.Concat(signature.ReturnTypes).ToArray());
+					    } catch {
+					        typedDelegate = typeof(Action);
+					    }
                                             var delField = $"➡ {moduleName}::{fieldName}";
                                             var delFieldBuilder = exportsBuilder.DefineField(delField, typedDelegate, privateReadonlyField);
 

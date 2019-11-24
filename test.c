@@ -1,15 +1,10 @@
-extern void sayc(int s);
+//#include <stdio.h>
+
 extern void greet();
 
-void putss(char *s) {
-	int i = 0;
-	while(s[i] != 0) {
-		sayc((int)s[i]);
-		i++;
-	}
-}
-
-void main() {
-	putss("hello!\n");
+void _start() 
+{
+	printf("Welcome printf %d %d %.2f\n", 666, 777, 12.55);
 	greet();
 }
+
